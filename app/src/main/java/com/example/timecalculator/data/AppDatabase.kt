@@ -1,4 +1,4 @@
-package com.example.timecalculator.utils
+package com.example.timecalculator.data
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
@@ -31,3 +31,4 @@ abstract class AppDatabase : RoomDatabase() {
         const val DATABASE_NAME = "time_calculator_db"
     }
 }
+

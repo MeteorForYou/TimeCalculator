@@ -16,7 +16,15 @@ import com.example.timecalculator.ui.theme.TimeCalculatorTheme
 
 
 @Composable
-fun HomeScreen(){}
+fun HomeScreen(modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Spacer(modifier = Modifier.height(32.dp))
+        Text("首页")
+    }
+}
 
 @Preview(showBackground = true,name = "light")
 @Preview(showBackground = true,name = "dark",

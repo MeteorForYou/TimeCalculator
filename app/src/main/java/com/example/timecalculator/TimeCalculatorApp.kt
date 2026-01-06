@@ -4,7 +4,7 @@ import android.app.Application
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.room.Room
-import com.example.timecalculator.utils.AppDatabase
+import com.example.timecalculator.data.AppDatabase
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -15,7 +15,6 @@ import javax.inject.Singleton
 
 @HiltAndroidApp
 class TimeCalculatorApp : Application()
-
 @Module
 @InstallIn(SingletonComponent::class)
 object AppModule {

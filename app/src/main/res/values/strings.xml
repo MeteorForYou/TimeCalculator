@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">时间计算器</string>
+    <string name="accessibility_service_description">此服务用于读取屏幕上显示的时间信息，帮助您快速记录和计算时间。</string>
 </resources>
