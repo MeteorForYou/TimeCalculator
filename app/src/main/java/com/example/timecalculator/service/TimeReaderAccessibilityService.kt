@@ -1,20 +1,13 @@
 package com.example.timecalculator.service
 
 import android.accessibilityservice.AccessibilityService
-import android.annotation.SuppressLint
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 
 /**
  * 无障碍服务 - 用于读取屏幕上的时间信息
- * 
- * 用途说明：
- * - 仅用于读取屏幕上显示的时间文本
- * - 不收集、存储或传输用户隐私数据
- * - 不修改系统设置或绑定隐私控制
  */
-@SuppressLint("AccessibilityPolicy")
 class TimeReaderAccessibilityService : AccessibilityService() {
 
     companion object {

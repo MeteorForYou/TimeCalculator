@@ -77,6 +77,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         Log.d("MainActivity", "onCreate")
 
+        // 处理从悬浮窗返回的数据
+        handleIntentData(intent)
+
         enableEdgeToEdge()
         setContent {
             val themeViewModel: AppThemeViewModel = hiltViewModel()
@@ -152,6 +155,23 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         Log.d("MainActivity", "onResume")
         refreshAllPermissions()
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        Log.d("MainActivity", "onNewIntent")
+        handleIntentData(intent)
+    }
+
+    /**
+     * 处理Intent数据（从悬浮窗返回的文字）
+     */
+    private fun handleIntentData(intent: Intent?) {
+        intent?.getStringExtra("screen_text")?.let { screenText ->
+            Log.d("MainActivity", "========== 从悬浮窗接收到的文字 ==========")
+            Log.d("MainActivity", screenText)
+            Log.d("MainActivity", "=========================================")
+        }
     }
 
     /**
