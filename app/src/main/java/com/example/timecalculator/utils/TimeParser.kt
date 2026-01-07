@@ -23,7 +23,9 @@ object TimeParser {
         // 上午/下午格式 (如 上午9:30、下午2:30)
         Pattern.compile("(上午|下午|AM|PM|am|pm)\\s*(\\d{1,2}):(\\d{2})"),
         // 带日期的格式 yyyy-MM-dd HH:mm
-        Pattern.compile("(\\d{4})[-/](\\d{1,2})[-/](\\d{1,2})\\s+(\\d{1,2}):(\\d{2})")
+        Pattern.compile("(\\d{4})[-/.](\\d{1,2})[-/.](\\d{1,2})\\s+(\\d{1,2}):(\\d{2})"),
+        // 仅日期格式 yyyy-MM-dd 或 yyyy.MM.dd (如 2026.01.07, 2026-01-07)
+        Pattern.compile("(\\d{4})[-/.](\\d{1,2})[-/.](\\d{1,2})(?!\\s*\\d)")
     )
 
     data class ParsedTime(
@@ -43,7 +45,7 @@ object TimeParser {
         val results = mutableListOf<ParsedTime>()
         val usedRanges = mutableListOf<IntRange>()
 
-        // 先匹配带日期的完整格式
+        // 先匹配带日期和时间的完整格式 yyyy-MM-dd HH:mm
         val dateTimePattern = TIME_PATTERNS[4]
         val dateTimeMatcher = dateTimePattern.matcher(text)
         while (dateTimeMatcher.find()) {
@@ -62,6 +64,32 @@ object TimeParser {
                         val displayText = dateTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
 
                         results.add(ParsedTime(millis, displayText, dateTimeMatcher.start(), dateTimeMatcher.end()))
+                        usedRanges.add(range)
+                    }
+                } catch (e: Exception) {
+                    // 忽略解析失败
+                }
+            }
+        }
+
+        // 匹配仅日期格式 yyyy-MM-dd 或 yyyy.MM.dd (如 2026.01.07)
+        val dateOnlyPattern = TIME_PATTERNS[5]
+        val dateOnlyMatcher = dateOnlyPattern.matcher(text)
+        while (dateOnlyMatcher.find()) {
+            val range = dateOnlyMatcher.start()..dateOnlyMatcher.end()
+            if (usedRanges.none { it.overlaps(range) }) {
+                try {
+                    val year = dateOnlyMatcher.group(1)!!.toInt()
+                    val month = dateOnlyMatcher.group(2)!!.toInt()
+                    val day = dateOnlyMatcher.group(3)!!.toInt()
+
+                    if (isValidDate(year, month, day)) {
+                        // 纯日期默认为00:00:00
+                        val dateTime = LocalDateTime.of(year, month, day, 0, 0, 0)
+                        val millis = dateTime.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+                        val displayText = dateTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd 00:00"))
+
+                        results.add(ParsedTime(millis, displayText, dateOnlyMatcher.start(), dateOnlyMatcher.end()))
                         usedRanges.add(range)
                     }
                 } catch (e: Exception) {
@@ -236,11 +264,21 @@ object TimeParser {
         return hour in 0..23 && minute in 0..59 && second in 0..59
     }
 
-    private fun isValidDateTime(year: Int, month: Int, day: Int, hour: Int, minute: Int): Boolean {
+    private fun isValidDate(year: Int, month: Int, day: Int): Boolean {
         if (year < 1900 || year > 2100) return false
         if (month < 1 || month > 12) return false
         if (day < 1 || day > 31) return false
-        return isValidTime(hour, minute)
+        // 尝试创建日期来验证有效性
+        return try {
+            LocalDate.of(year, month, day)
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    private fun isValidDateTime(year: Int, month: Int, day: Int, hour: Int, minute: Int): Boolean {
+        return isValidDate(year, month, day) && isValidTime(hour, minute)
     }
 
     private fun IntRange.overlaps(other: IntRange): Boolean {
