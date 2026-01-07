@@ -8,6 +8,7 @@ import android.os.IBinder
 import android.util.Log
 import android.view.Gravity
 import android.view.WindowManager
+import android.content.SharedPreferences
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -15,6 +16,11 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.ComposeView
@@ -30,18 +36,24 @@ import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.example.timecalculator.activity.MainActivity
+import com.example.timecalculator.repository.PrefsRepository
 import com.example.timecalculator.ui.theme.TimeCalculatorTheme
+import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
 /**
  * 悬浮窗服务
  */
+@AndroidEntryPoint
 class FloatingWindowService : Service(), ViewModelStoreOwner, SavedStateRegistryOwner {
-
     companion object {
         private const val TAG = "FloatingWindowService"
         var isRunning = false
             private set
     }
+
+    @Inject
+    lateinit var prefsRepository: PrefsRepository
 
     private lateinit var windowManager: WindowManager
     private var floatingView: ComposeView? = null
@@ -106,24 +118,23 @@ class FloatingWindowService : Service(), ViewModelStoreOwner, SavedStateRegistry
             setViewTreeSavedStateRegistryOwner(this@FloatingWindowService)
             
             setContent {
-                TimeCalculatorTheme {
-                    FloatingWindowContent(
-                        onReadTimeClick = { readTimeAndReturnToApp() },
-                        onDragStart = {
-                            offsetX = 0f
-                            offsetY = 0f
-                        },
-                        onDrag = { dragX, dragY ->
-                            // 累积偏移量
-                            offsetX += dragX
-                            offsetY += dragY
-                            // 更新悬浮窗位置
-                            params!!.x += dragX.toInt()
-                            params!!.y += dragY.toInt()
-                            windowManager.updateViewLayout(floatingView, params)
-                        }
-                    )
-                }
+                FloatingWindowTheme(
+                    prefsRepository = prefsRepository,
+                    onReadTimeClick = { readTimeAndReturnToApp() },
+                    onDragStart = {
+                        offsetX = 0f
+                        offsetY = 0f
+                    },
+                    onDrag = { dragX, dragY ->
+                        // 累积偏移量
+                        offsetX += dragX
+                        offsetY += dragY
+                        // 更新悬浮窗位置
+                        params!!.x += dragX.toInt()
+                        params!!.y += dragY.toInt()
+                        windowManager.updateViewLayout(floatingView, params)
+                    }
+                )
             }
         }
 
@@ -165,6 +176,55 @@ class FloatingWindowService : Service(), ViewModelStoreOwner, SavedStateRegistry
         lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
         isRunning = false
         Log.d(TAG, "悬浮窗服务已销毁")
+    }
+}
+
+/**
+ * 悬浮窗主题包装器 - 监听主题变化
+ */
+@Composable
+private fun FloatingWindowTheme(
+    prefsRepository: PrefsRepository,
+    onReadTimeClick: () -> Unit,
+    onDragStart: () -> Unit,
+    onDrag: (Float, Float) -> Unit
+) {
+    // 使用State保存主题设置
+    var darkMode by remember { mutableIntStateOf(prefsRepository.getDarkMode()) }
+    var themeSeq by remember { mutableIntStateOf(prefsRepository.getThemeSequence()) }
+    var contrast by remember { mutableIntStateOf(prefsRepository.getContrast()) }
+
+    // 监听SharedPreferences变化
+    DisposableEffect(Unit) {
+        val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            when (key) {
+                "dark_mode" -> darkMode = prefsRepository.getDarkMode()
+                "themeSequence" -> themeSeq = prefsRepository.getThemeSequence()
+                "contrast" -> contrast = prefsRepository.getContrast()
+            }
+        }
+        
+        // 通过反射获取SharedPreferences实例并注册监听器
+        val prefsField = prefsRepository.javaClass.getDeclaredField("prefs")
+        prefsField.isAccessible = true
+        val sharedPrefs = prefsField.get(prefsRepository) as SharedPreferences
+        sharedPrefs.registerOnSharedPreferenceChangeListener(listener)
+
+        onDispose {
+            sharedPrefs.unregisterOnSharedPreferenceChangeListener(listener)
+        }
+    }
+
+    TimeCalculatorTheme(
+        darkMode = darkMode,
+        themeSequence = themeSeq,
+        contrast = contrast
+    ) {
+        FloatingWindowContent(
+            onReadTimeClick = onReadTimeClick,
+            onDragStart = onDragStart,
+            onDrag = onDrag
+        )
     }
 }
 

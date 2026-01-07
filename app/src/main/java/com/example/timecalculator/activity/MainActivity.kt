@@ -36,6 +36,7 @@ import com.example.timecalculator.ui.screen.PermissionGuideScreen
 import com.example.timecalculator.ui.theme.TimeCalculatorTheme
 import com.example.timecalculator.utils.TimeParser
 import com.example.timecalculator.viewmodel.AppThemeViewModel
+import com.example.timecalculator.viewmodel.FloatingWindowViewModel
 import com.example.timecalculator.viewmodel.PermissionViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -47,6 +48,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private val permissionViewModel: PermissionViewModel by viewModels()
+    private val floatingWindowViewModel: FloatingWindowViewModel by viewModels()
 
     // 悬浮窗权限请求
     private val overlayPermissionLauncher = registerForActivityResult(
@@ -131,7 +133,7 @@ class MainActivity : ComponentActivity() {
                     composable<Home> {
                         ModalNavigationDrawer(
                             drawerState = drawerState,
-                            drawerContent = { MainNavDrawer() }
+                            drawerContent = { MainNavDrawer(themeViewModel) }
                         ) {
                             Scaffold(
                                 modifier = Modifier.fillMaxSize(),
@@ -147,7 +149,8 @@ class MainActivity : ComponentActivity() {
                                 bottomBar = {},
                             ) { innerPadding ->
                                 HomeScreen(
-                                    modifier = Modifier.padding(innerPadding)
+                                    modifier = Modifier.padding(innerPadding),
+                                    viewModel = floatingWindowViewModel
                                 )
                             }
                         }
@@ -167,6 +170,10 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         Log.d(TAG, "onNewIntent")
         handleIntentData(intent)
+        
+        // 从悬浮窗返回时，更新悬浮窗状态
+        // 因为FloatingWindowService调用stopSelf()后会自动关闭
+        floatingWindowViewModel.setFloatingWindowState(false)
     }
 
     /**

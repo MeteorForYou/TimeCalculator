@@ -20,12 +20,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -36,7 +33,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.timecalculator.ui.theme.TimeCalculatorTheme
 import com.example.timecalculator.viewmodel.FloatingWindowViewModel
 
-
 @Composable
 fun HomeScreen(
     modifier: Modifier = Modifier,
@@ -44,21 +40,6 @@ fun HomeScreen(
 ) {
     val isFloatingWindowRunning by viewModel.isFloatingWindowRunning.collectAsState()
     val context = LocalContext.current
-
-    // 监听生命周期，当页面恢复时更新悬浮窗状态
-    DisposableEffect(Unit) {
-        val lifecycleOwner = context as? androidx.lifecycle.LifecycleOwner
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) {
-                viewModel.updateFloatingWindowState()
-            }
-        }
-        lifecycleOwner?.lifecycle?.addObserver(observer)
-
-        onDispose {
-            lifecycleOwner?.lifecycle?.removeObserver(observer)
-        }
-    }
 
     Column(
         modifier = modifier
