@@ -24,6 +24,7 @@ class FloatingWindowViewModel @Inject constructor(
     }
 
     init {
+        Log.d(TAG, "init")
         updateFloatingWindowState()
     }
 
@@ -31,22 +32,24 @@ class FloatingWindowViewModel @Inject constructor(
      * 启动悬浮窗服务
      */
     fun startFloatingWindow() {
-        Log.d(TAG, "启动悬浮窗服务")
+        Log.d(TAG, "startFloatingWindow")
         val context = getApplication<Application>()
         val intent = Intent(context, FloatingWindowService::class.java)
         context.startService(intent)
-        updateFloatingWindowState()
+        // 立即更新状态，不等待服务异步启动
+        _isFloatingWindowRunning.value = true
     }
 
     /**
      * 停止悬浮窗服务
      */
     fun stopFloatingWindow() {
-        Log.d(TAG, "停止悬浮窗服务")
+        Log.d(TAG, "stopFloatingWindow")
         val context = getApplication<Application>()
         val intent = Intent(context, FloatingWindowService::class.java)
         context.stopService(intent)
-        updateFloatingWindowState()
+        // 立即更新状态，不等待服务异步停止
+        _isFloatingWindowRunning.value = false
     }
 
     /**
@@ -54,7 +57,7 @@ class FloatingWindowViewModel @Inject constructor(
      */
     fun updateFloatingWindowState() {
         _isFloatingWindowRunning.value = FloatingWindowService.isRunning
-        Log.d(TAG, "悬浮窗状态: ${_isFloatingWindowRunning.value}")
+        Log.d(TAG, "updateFloatingWindowState 悬浮窗状态: ${_isFloatingWindowRunning.value}")
     }
 }
 
