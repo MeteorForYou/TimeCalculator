@@ -7,21 +7,14 @@ import android.os.Bundle
 import android.os.PowerManager
 import android.provider.Settings
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.DrawerValue
-import androidx.compose.material3.ModalNavigationDrawer
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -29,8 +22,6 @@ import androidx.navigation.compose.rememberNavController
 import com.example.timecalculator.navigation.Home
 import com.example.timecalculator.navigation.PermissionGuide
 import com.example.timecalculator.service.TimeReaderAccessibilityService
-import com.example.timecalculator.ui.components.MainNavDrawer
-import com.example.timecalculator.ui.components.MainTopBar
 import com.example.timecalculator.ui.screen.HomeScreen
 import com.example.timecalculator.ui.screen.PermissionGuideScreen
 import com.example.timecalculator.ui.theme.TimeCalculatorTheme
@@ -38,8 +29,8 @@ import com.example.timecalculator.utils.TimeParser
 import com.example.timecalculator.viewmodel.AppThemeViewModel
 import com.example.timecalculator.viewmodel.FloatingWindowViewModel
 import com.example.timecalculator.viewmodel.PermissionViewModel
+import com.example.timecalculator.viewmodel.ResultViewModel
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -49,6 +40,7 @@ class MainActivity : ComponentActivity() {
 
     private val permissionViewModel: PermissionViewModel by viewModels()
     private val floatingWindowViewModel: FloatingWindowViewModel by viewModels()
+    private val resultViewModel: ResultViewModel by viewModels()
 
     // 悬浮窗权限请求
     private val overlayPermissionLauncher = registerForActivityResult(
@@ -98,9 +90,6 @@ class MainActivity : ComponentActivity() {
             val permissionState by permissionViewModel.uiState.collectAsState()
 
             val navController = rememberNavController()
-            val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
-            val scope = rememberCoroutineScope()
-
             // 根据权限状态决定起始页面
             val startDestination = if (permissionState.allRequiredGranted) Home else PermissionGuide
 
@@ -131,29 +120,11 @@ class MainActivity : ComponentActivity() {
 
                     // 主页
                     composable<Home> {
-                        ModalNavigationDrawer(
-                            drawerState = drawerState,
-                            drawerContent = { MainNavDrawer(themeViewModel) }
-                        ) {
-                            Scaffold(
-                                modifier = Modifier.fillMaxSize(),
-                                topBar = {
-                                    MainTopBar(
-                                        onClickNavIcon = {
-                                            scope.launch {
-                                                drawerState.apply { if (isClosed) open() else close() }
-                                            }
-                                        }
-                                    )
-                                },
-                                bottomBar = {},
-                            ) { innerPadding ->
-                                HomeScreen(
-                                    modifier = Modifier.padding(innerPadding),
-                                    viewModel = floatingWindowViewModel
-                                )
-                            }
-                        }
+                        HomeScreen(
+                            themeVM = themeViewModel,
+                            floatingWindowVM = floatingWindowViewModel,
+                            resultVM = resultViewModel
+                        )
                     }
                 }
             }
@@ -172,7 +143,6 @@ class MainActivity : ComponentActivity() {
         handleIntentData(intent)
         
         // 从悬浮窗返回时，更新悬浮窗状态
-        // 因为FloatingWindowService调用stopSelf()后会自动关闭
         floatingWindowViewModel.setFloatingWindowState(false)
     }
 
@@ -180,9 +150,10 @@ class MainActivity : ComponentActivity() {
      * 处理Intent数据（从悬浮窗返回的文字）
      */
     private fun handleIntentData(intent: Intent?) {
-        // 解析每一行中的时间
-        val allTimes = mutableListOf<TimeParser.ParsedTime>()
         intent?.getStringExtra("screen_text")?.let { screenText ->
+            Log.d(TAG, "接收到屏幕文字，开始解析")
+            val allTimes = mutableListOf<TimeParser.ParsedTime>()
+
             // 按换行符分割文本
             val lines = screenText.split("\n")
             Log.d(TAG, "共 ${lines.size} 行文本")
@@ -198,13 +169,22 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
+
+            if (allTimes.isEmpty()) {
+                Log.d(TAG, "未解析到任何时间")
+                Toast.makeText(this, "未识别到时间信息", Toast.LENGTH_SHORT).show()
+            } else {
+                resultViewModel.addResult(allTimes)
+            }
         }
     }
+
 
     /**
      * 刷新所有权限状态并更新到 ViewModel
      */
     private fun refreshAllPermissions() {
+        Log.d(TAG, "refreshAllPermissions")
         val overlay = checkOverlayPermission()
         val battery = checkBatteryOptimization()
         val notification = checkNotificationPermission()
@@ -225,7 +205,6 @@ class MainActivity : ComponentActivity() {
      * 检查悬浮窗权限
      */
     private fun checkOverlayPermission(): Boolean {
-        Log.d(TAG, "checkOverlayPermission")
         return Settings.canDrawOverlays(this)
     }
 
@@ -233,7 +212,6 @@ class MainActivity : ComponentActivity() {
      * 检查电池优化白名单
      */
     private fun checkBatteryOptimization(): Boolean {
-        Log.d(TAG, "checkBatteryOptimization")
         val powerManager = getSystemService(POWER_SERVICE) as PowerManager
         return powerManager.isIgnoringBatteryOptimizations(packageName)
     }
@@ -242,7 +220,6 @@ class MainActivity : ComponentActivity() {
      * 检查通知权限
      */
     private fun checkNotificationPermission(): Boolean {
-        Log.d(TAG, "checkNotificationPermission")
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) ==
                 android.content.pm.PackageManager.PERMISSION_GRANTED
@@ -255,7 +232,6 @@ class MainActivity : ComponentActivity() {
      * 检查无障碍服务是否开启
      */
     private fun checkAccessibilityPermission(): Boolean {
-        Log.d(TAG, "checkAccessibilityPermission")
         val serviceName = "${packageName}/${TimeReaderAccessibilityService::class.java.canonicalName}"
         val enabledServices = Settings.Secure.getString(
             contentResolver,
