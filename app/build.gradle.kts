@@ -31,6 +31,7 @@ android {
   compileOptions {
     sourceCompatibility = JavaVersion.VERSION_11
     targetCompatibility = JavaVersion.VERSION_11
+    isCoreLibraryDesugaringEnabled = true
   }
   kotlin {
     compilerOptions {
@@ -72,4 +73,7 @@ dependencies {
   implementation(libs.room.runtime)
   implementation(libs.room.ktx)
   ksp(libs.room.compiler)
+
+  // Java 8+ API desugaring (支持 java.time 等 API)
+  coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
 }

@@ -5,13 +5,13 @@ import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 import java.util.regex.Pattern
 
 /**
  * 时间解析工具类 - 用正则表达式从文本中提取时间
  */
 object TimeParser {
-
     // 时间格式的正则表达式
     private val TIME_PATTERNS = listOf(
         // HH:mm:ss 格式 (如 14:30:00)
@@ -50,11 +50,11 @@ object TimeParser {
             val range = dateTimeMatcher.start()..dateTimeMatcher.end()
             if (usedRanges.none { it.overlaps(range) }) {
                 try {
-                    val year = dateTimeMatcher.group(1).toInt()
-                    val month = dateTimeMatcher.group(2).toInt()
-                    val day = dateTimeMatcher.group(3).toInt()
-                    val hour = dateTimeMatcher.group(4).toInt()
-                    val minute = dateTimeMatcher.group(5).toInt()
+                    val year = dateTimeMatcher.group(1)!!.toInt()
+                    val month = dateTimeMatcher.group(2)!!.toInt()
+                    val day = dateTimeMatcher.group(3)!!.toInt()
+                    val hour = dateTimeMatcher.group(4)!!.toInt()
+                    val minute = dateTimeMatcher.group(5)!!.toInt()
 
                     if (isValidDateTime(year, month, day, hour, minute)) {
                         val dateTime = LocalDateTime.of(year, month, day, hour, minute)
@@ -77,9 +77,9 @@ object TimeParser {
             val range = amPmMatcher.start()..amPmMatcher.end()
             if (usedRanges.none { it.overlaps(range) }) {
                 try {
-                    val amPm = amPmMatcher.group(1)
-                    var hour = amPmMatcher.group(2).toInt()
-                    val minute = amPmMatcher.group(3).toInt()
+                    val amPm = amPmMatcher.group(1)!!
+                    var hour = amPmMatcher.group(2)!!.toInt()
+                    val minute = amPmMatcher.group(3)!!.toInt()
 
                     // 转换为24小时制
                     if ((amPm == "下午" || amPm.equals("PM", ignoreCase = true)) && hour < 12) {
@@ -110,9 +110,9 @@ object TimeParser {
             val range = hmsMatcher.start()..hmsMatcher.end()
             if (usedRanges.none { it.overlaps(range) }) {
                 try {
-                    val hour = hmsMatcher.group(1).toInt()
-                    val minute = hmsMatcher.group(2).toInt()
-                    val second = hmsMatcher.group(3).toInt()
+                    val hour = hmsMatcher.group(1)!!.toInt()
+                    val minute = hmsMatcher.group(2)!!.toInt()
+                    val second = hmsMatcher.group(3)!!.toInt()
 
                     if (isValidTime(hour, minute, second)) {
                         val time = LocalTime.of(hour, minute, second)
@@ -136,8 +136,8 @@ object TimeParser {
             val range = hmMatcher.start()..hmMatcher.end()
             if (usedRanges.none { it.overlaps(range) }) {
                 try {
-                    val hour = hmMatcher.group(1).toInt()
-                    val minute = hmMatcher.group(2).toInt()
+                    val hour = hmMatcher.group(1)!!.toInt()
+                    val minute = hmMatcher.group(2)!!.toInt()
 
                     if (isValidTime(hour, minute)) {
                         val time = LocalTime.of(hour, minute)
@@ -161,8 +161,8 @@ object TimeParser {
             val range = chineseMatcher.start()..chineseMatcher.end()
             if (usedRanges.none { it.overlaps(range) }) {
                 try {
-                    val hour = chineseMatcher.group(1).toInt()
-                    val minute = chineseMatcher.group(2).toInt()
+                    val hour = chineseMatcher.group(1)!!.toInt()
+                    val minute = chineseMatcher.group(2)!!.toInt()
 
                     if (isValidTime(hour, minute)) {
                         val time = LocalTime.of(hour, minute)
@@ -228,7 +228,7 @@ object TimeParser {
             append("\n\n")
             append("共计 ${if (isNegative) "-" else ""}${absMinutes} 分钟")
             append("\n")
-            append("共计 ${if (isNegative) "-" else ""}${String.format("%.2f", absMinutes / 60.0)} 小时")
+            append("共计 ${if (isNegative) "-" else ""}${String.format(Locale.US, "%.2f", absMinutes / 60.0)} 小时")
         }
     }
 
