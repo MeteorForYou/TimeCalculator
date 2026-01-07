@@ -1,5 +1,6 @@
 package com.example.timecalculator.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,6 +25,9 @@ data class PermissionUiState(
 
 @HiltViewModel
 class PermissionViewModel @Inject constructor() : ViewModel() {
+    init {
+        Log.d("PermissionVM","init")
+    }
 
     private val _uiState = MutableStateFlow(PermissionUiState())
     val uiState: StateFlow<PermissionUiState> = _uiState.asStateFlow()

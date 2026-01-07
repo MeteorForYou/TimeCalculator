@@ -12,15 +12,20 @@ import kotlinx.coroutines.flow.StateFlow
 class AppThemeViewModel @Inject constructor(
   private val repository: PrefsRepository
 ) : ViewModel() {
-  init {
-    Log.d("AppThemeViewModel", "AppThemeViewModel has been created")
+  companion object {
+    private const val TAG = "AppThemeVM"
   }
+
+  init {
+    Log.d(TAG, "init")
+  }
+
   private val _darkMode = MutableStateFlow(repository.getDarkMode())
   val darkMode: StateFlow<Int> = _darkMode
   fun setDarkMode(value: Int) {
     _darkMode.value = value
     repository.saveDarkMode(value)
-    Log.d("AppThemeViewModel","setDarkMode darkMode:${darkMode.value}")
+    Log.d(TAG,"setDarkMode darkMode:${darkMode.value}")
   }
 
   private val _themeSequence = MutableStateFlow(repository.getThemeSequence())
@@ -28,7 +33,7 @@ class AppThemeViewModel @Inject constructor(
   fun setThemeSequence(value: Int) {
     _themeSequence.value = value
     repository.saveThemeSequence(value)
-    Log.d("AppThemeViewModel","setThemeSequence themeSequence:${themeSequence.value}")
+    Log.d(TAG,"setThemeSequence themeSequence:${themeSequence.value}")
   }
 
   private val _contrast = MutableStateFlow(repository.getContrast())
@@ -36,6 +41,6 @@ class AppThemeViewModel @Inject constructor(
   fun setContrast(value: Int) {
     _contrast.value = value
     repository.saveContrast(value)
-    Log.d("AppThemeViewModel","setContrast contrast:${contrast}")
+    Log.d(TAG,"setContrast contrast:${contrast}")
   }
 }
