@@ -34,6 +34,7 @@ import com.example.timecalculator.ui.components.MainTopBar
 import com.example.timecalculator.ui.screen.HomeScreen
 import com.example.timecalculator.ui.screen.PermissionGuideScreen
 import com.example.timecalculator.ui.theme.TimeCalculatorTheme
+import com.example.timecalculator.utils.TimeParser
 import com.example.timecalculator.viewmodel.AppThemeViewModel
 import com.example.timecalculator.viewmodel.PermissionViewModel
 import dagger.hilt.android.AndroidEntryPoint
@@ -41,6 +42,10 @@ import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    companion object{
+        private const val TAG = "MainActivity"
+    }
+
     private val permissionViewModel: PermissionViewModel by viewModels()
 
     // 悬浮窗权限请求
@@ -63,7 +68,8 @@ class MainActivity : ComponentActivity() {
     private val accessibilitySettingsLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) {
-        refreshAllPermissions()
+        val granted = checkAccessibilityPermission()
+        permissionViewModel.setAccessibilityPermission(granted)
     }
 
     // 通知权限请求 (Android 13+)
@@ -75,7 +81,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        Log.d("MainActivity", "onCreate")
+        Log.d(TAG, "onCreate")
 
         // 处理从悬浮窗返回的数据
         handleIntentData(intent)
@@ -153,13 +159,13 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        Log.d("MainActivity", "onResume")
+        Log.d(TAG, "onResume")
         refreshAllPermissions()
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        Log.d("MainActivity", "onNewIntent")
+        Log.d(TAG, "onNewIntent")
         handleIntentData(intent)
     }
 
@@ -167,10 +173,24 @@ class MainActivity : ComponentActivity() {
      * 处理Intent数据（从悬浮窗返回的文字）
      */
     private fun handleIntentData(intent: Intent?) {
+        // 解析每一行中的时间
+        val allTimes = mutableListOf<TimeParser.ParsedTime>()
         intent?.getStringExtra("screen_text")?.let { screenText ->
-            Log.d("MainActivity", "========== 从悬浮窗接收到的文字 ==========")
-            Log.d("MainActivity", screenText)
-            Log.d("MainActivity", "=========================================")
+            // 按换行符分割文本
+            val lines = screenText.split("\n")
+            Log.d(TAG, "共 ${lines.size} 行文本")
+            lines.forEachIndexed { index, line ->
+                if (line.isNotBlank()) {
+                    val times = TimeParser.parseTimesFromText(line)
+                    if (times.isNotEmpty()) {
+                        Log.d(TAG, "第 ${index + 1} 行: $line")
+                        times.forEach { time ->
+                            Log.d(TAG, "  → 解析到时间: ${time.displayText} (${time.timeMillis}ms)")
+                            allTimes.add(time)
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -182,7 +202,7 @@ class MainActivity : ComponentActivity() {
         val battery = checkBatteryOptimization()
         val notification = checkNotificationPermission()
         val accessibility = checkAccessibilityPermission()
-        Log.d("MainActivity", "Permissions: 悬浮窗权限:$overlay, 电池优化白名单:$battery, 通知权限:$notification, 无障碍服务:$accessibility")
+        Log.d(TAG, "Permissions: 悬浮窗权限:$overlay, 电池优化白名单:$battery, 通知权限:$notification, 无障碍服务:$accessibility")
 
         permissionViewModel.setAllPermissions(
             overlay = overlay,
@@ -198,7 +218,7 @@ class MainActivity : ComponentActivity() {
      * 检查悬浮窗权限
      */
     private fun checkOverlayPermission(): Boolean {
-        Log.d("MainActivity", "checkOverlayPermission")
+        Log.d(TAG, "checkOverlayPermission")
         return Settings.canDrawOverlays(this)
     }
 
@@ -206,7 +226,7 @@ class MainActivity : ComponentActivity() {
      * 检查电池优化白名单
      */
     private fun checkBatteryOptimization(): Boolean {
-        Log.d("MainActivity", "checkBatteryOptimization")
+        Log.d(TAG, "checkBatteryOptimization")
         val powerManager = getSystemService(POWER_SERVICE) as PowerManager
         return powerManager.isIgnoringBatteryOptimizations(packageName)
     }
@@ -215,7 +235,7 @@ class MainActivity : ComponentActivity() {
      * 检查通知权限
      */
     private fun checkNotificationPermission(): Boolean {
-        Log.d("MainActivity", "checkNotificationPermission")
+        Log.d(TAG, "checkNotificationPermission")
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) ==
                 android.content.pm.PackageManager.PERMISSION_GRANTED
@@ -228,7 +248,7 @@ class MainActivity : ComponentActivity() {
      * 检查无障碍服务是否开启
      */
     private fun checkAccessibilityPermission(): Boolean {
-        Log.d("MainActivity", "checkAccessibilityPermission")
+        Log.d(TAG, "checkAccessibilityPermission")
         val serviceName = "${packageName}/${TimeReaderAccessibilityService::class.java.canonicalName}"
         val enabledServices = Settings.Secure.getString(
             contentResolver,
@@ -244,7 +264,7 @@ class MainActivity : ComponentActivity() {
      * 请求悬浮窗权限
      */
     private fun requestOverlayPermission() {
-        Log.d("MainActivity", "requestOverlayPermission")
+        Log.d(TAG, "requestOverlayPermission")
         val intent = Intent(
             Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
             Uri.parse("package:$packageName")
@@ -257,7 +277,7 @@ class MainActivity : ComponentActivity() {
      */
     @Suppress("BatteryLife")
     private fun requestBatteryOptimization() {
-        Log.d("MainActivity", "requestBatteryOptimization")
+        Log.d(TAG, "requestBatteryOptimization")
         val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
             data = Uri.parse("package:$packageName")
         }
@@ -268,7 +288,7 @@ class MainActivity : ComponentActivity() {
      * 请求通知权限
      */
     private fun requestNotificationPermission() {
-        Log.d("MainActivity", "requestNotificationPermission")
+        Log.d(TAG, "requestNotificationPermission")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             notificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
         }
@@ -278,7 +298,7 @@ class MainActivity : ComponentActivity() {
      * 打开无障碍服务设置
      */
     private fun openAccessibilitySettings() {
-        Log.d("MainActivity", "openAccessibilitySettings")
+        Log.d(TAG, "openAccessibilitySettings")
         val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
         accessibilitySettingsLauncher.launch(intent)
     }
